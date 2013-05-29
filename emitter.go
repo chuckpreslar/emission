@@ -45,7 +45,10 @@ func (e *Emitter) Off(l func(...interface{})) {
 }
 
 func (e *Emitter) Once(s string, l func(...interface{})) {
-
+	e.AddListener(s, l)
+	e.AddListener(s, func(i ...interface{}) {
+		e.RemoveListener(l)
+	})
 }
 
 func (e *Emitter) Emit(s string, i ...interface{}) {
