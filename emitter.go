@@ -107,6 +107,9 @@ func (emitter *Emitter) Off(fn func(...interface{})) {
  */
 
 func (emitter *Emitter) Once(e string, fn func(...interface{})) {
+	if nil == fn {
+		return
+	}
 	emitter.AddListener(e, fn)
 	emitter.AddListener(e, func(args ...interface{}) {
 		emitter.RemoveListener(fn)
