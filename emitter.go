@@ -1,3 +1,27 @@
+/**
+ *	The MIT License (MIT)
+ *
+ *	Copyright (c) 2013 Chuck Preslar
+ *
+ *	Permission is hereby granted, free of charge, to any person obtaining a copy
+ *	of this software and associated documentation files (the "Software"), to deal
+ *	in the Software without restriction, including without limitation the rights
+ *	to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *	copies of the Software, and to permit persons to whom the Software is
+ *	furnished to do so, subject to the following conditions:
+ *
+ *	The above copyright notice and this permission notice shall be included in
+ *	all copies or substantial portions of the Software.
+ *
+ *	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *	AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *	LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *	OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ *	THE SOFTWARE.
+ */
+
 package emission
 
 import (
@@ -17,48 +41,99 @@ type Emitter struct {
 	maxListeners int
 }
 
-func (e *Emitter) AddListener(s string, l func(...interface{})) {
-	l = listener(l)
-	_, ok := e.events[s]
-	if !ok {
-		e.events[s] = &Event{[]listener{}}
+/**
+ * Adds the listener function `fn` to the `Emitter`'s event `e`
+ * listener array.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) AddListener(e string, fn func(...interface{})) {
+	if nil == fn {
+		return
 	}
-	e.events[s].listeners = append(e.events[s].listeners, l)
+	fn = listener(fn)
+	_, ok := emitter.events[e]
+	if !ok {
+		emitter.events[e] = &Event{[]listener{}}
+	}
+	emitter.events[e].listeners = append(emitter.events[e].listeners, fn)
 }
 
-func (e *Emitter) On(s string, l func(...interface{})) {
-	e.AddListener(s, l)
+/**
+ * Alias method for `#AddListener`.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) On(e string, fn func(...interface{})) {
+	emitter.AddListener(e, fn)
 }
 
-func (e *Emitter) RemoveListener(l func(...interface{})) {
-	for _, x := range e.events {
+/**
+ * Loops through an `Emitter`'s events and listeners, comparing
+ * the string value of the given listener function `fn` since go
+ * does not allow you to compare functions.  If a match is found,
+ * it is removed from the event's listeners array.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
+	for _, x := range emitter.events {
 		for i, y := range x.listeners {
-			if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", l) {
+			if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", fn) {
 				x.listeners = append(x.listeners[:i], x.listeners[i+1:]...)
 			}
 		}
 	}
 }
 
-func (e *Emitter) Off(l func(...interface{})) {
-	e.RemoveListener(l)
+/**
+ * Alias method for `#RemoveListener`.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) Off(fn func(...interface{})) {
+	emitter.RemoveListener(fn)
 }
 
-func (e *Emitter) Once(s string, l func(...interface{})) {
-	e.AddListener(s, l)
-	e.AddListener(s, func(i ...interface{}) {
-		e.RemoveListener(l)
+/**
+ * Adds a listener function to an event that will run a maximum of one time
+ * before being removed from it's listener array.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) Once(e string, fn func(...interface{})) {
+	emitter.AddListener(e, fn)
+	emitter.AddListener(e, func(args ...interface{}) {
+		emitter.RemoveListener(fn)
 	})
 }
 
-func (e *Emitter) Emit(s string, i ...interface{}) {
-	if _, ok := e.events[s]; !ok {
+/**
+ * Triggers an event `e`, passing along `args` to each of the event's
+ * listeners.
+ *
+ * @receiver *Emitter
+ */
+
+func (emitter *Emitter) Emit(e string, args ...interface{}) {
+	if _, ok := emitter.events[e]; !ok {
 		return
 	}
-	for _, l := range e.events[s].listeners {
-		l(i...)
+	for _, l := range emitter.events[e].listeners {
+		l(args...)
 	}
 }
+
+/**
+ * Returns a pointer to an `Emitter` struct.
+ *
+ * @returns *Emitter
+ */
 
 func NewEmitter() *Emitter {
 	return &Emitter{
