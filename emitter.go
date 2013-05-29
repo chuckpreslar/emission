@@ -69,10 +69,10 @@ func (emitter *Emitter) On(e string, fn func(...interface{})) {
 // does not allow you to compare functions.  If a match is found,
 // it is removed from the event's listeners array.
 func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
-  for _, x := range emitter.events {
-    for i, y := range x.listeners {
-      if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", fn) {
-        x.listeners = append(x.listeners[:i], x.listeners[i+1:]...)
+  for _, e := range emitter.events {
+    for i, l := range e.listeners {
+      if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
+        e.listeners = append(e.listeners[:i], e.listeners[i+1:]...)
       }
     }
   }
