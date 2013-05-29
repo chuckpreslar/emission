@@ -134,7 +134,7 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) {
 		go func() {
 			defer wg.Done()
 			l(args...)
-		}
+		}()
 	}
 	wg.Wait()
 }
