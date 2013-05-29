@@ -76,3 +76,4 @@ Takes a `string` representing the event to emit, and arguments of type `interfac
 To Do's
 =======
   * Implement the emitters maximum listener counts.
+  * Potentially recover from panics caused within listener functions.
