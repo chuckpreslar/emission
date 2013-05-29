@@ -130,10 +130,10 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) {
 	}
 	var wg sync.WaitGroup
 	wg.Add(len(emitter.events[e].listeners))
-	for _, l := range emitter.events[e].listeners {
+	for _, fn := range emitter.events[e].listeners {
 		go func() {
 			defer wg.Done()
-			l(args...)
+			fn(args...)
 		}()
 	}
 	wg.Wait()
