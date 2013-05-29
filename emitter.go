@@ -1,5 +1,9 @@
 package events
 
+import (
+	"fmt"
+)
+
 const DEFAULT_MAX_LISTENERS = 10
 
 type listener func(...interface{})
@@ -27,7 +31,13 @@ func (e *Emitter) On(s string, l func(...interface{})) {
 }
 
 func (e *Emitter) RemoveListener(l func(...interface{})) {
-
+	for _, x := range e.events {
+		for i, y := range x.listeners {
+			if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", l) {
+				x.listeners = append(x.listeners[:i], x.listeners[i+1:]...)
+			}
+		}
+	}
 }
 
 func (e *Emitter) Off(l func(...interface{})) {
