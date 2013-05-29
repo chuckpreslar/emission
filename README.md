@@ -31,7 +31,7 @@ func main() {
   
   emitter.On("test", a) // or emitter.AddListener("test", a)
   emitter.On("test", b) //  ...
-  emiiter.Emit("test", 1, 2, 3, 4)
+  emitter.Emit("test", 1, 2, 3, 4)
   
   /**
    * Hello from `a`! [1 2 3 4]
@@ -76,3 +76,4 @@ Takes a `string` representing the event to emit, and arguments of type `interfac
 To Do's
 =======
   * Implement the emitters maximum listener counts.
+  * Potentially recover from panics caused within listener functions.
