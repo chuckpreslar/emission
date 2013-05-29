@@ -26,6 +26,7 @@ package emission
 
 import (
 	"fmt"
+	"sync"
 )
 
 const DEFAULT_MAX_LISTENERS = 10
@@ -118,7 +119,7 @@ func (emitter *Emitter) Once(e string, fn func(...interface{})) {
 
 /**
  * Triggers an event `e`, passing along `args` to each of the event's
- * listeners.
+ * listeners.  Each listener function is ran as a go routine.
  *
  * @receiver *Emitter
  */
@@ -127,9 +128,15 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) {
 	if _, ok := emitter.events[e]; !ok {
 		return
 	}
+	var wg sync.WaitGroup
+	wg.Add(len(emitter.events[e].listeners))
 	for _, l := range emitter.events[e].listeners {
-		l(args...)
+		go func() {
+			defer wg.Done()
+			l(args...)
+		}
 	}
+	wg.Wait()
 }
 
 /**

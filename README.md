@@ -71,9 +71,8 @@ Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's l
 
 #### *#Emit*
 
-Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.
+Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
 
 To Do's
 =======
   * Implement the emitters maximum listener counts.
-  * Potentially call listener functions as `go routines`.
