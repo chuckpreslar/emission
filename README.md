@@ -31,7 +31,7 @@ func main() {
   
   emitter.On("test", a) // or emitter.AddListener("test", a)
   emitter.On("test", b) //  ...
-  emiiter.Emit("test", 1, 2, 3, 4)
+  emitter.Emit("test", 1, 2, 3, 4)
   
   /**
    * Hello from `a`! [1 2 3 4]
