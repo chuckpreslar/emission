@@ -25,8 +25,8 @@
 package emission
 
 import (
-	"fmt"
-	"sync"
+  "fmt"
+  "sync"
 )
 
 const DEFAULT_MAX_LISTENERS = 10
@@ -34,12 +34,12 @@ const DEFAULT_MAX_LISTENERS = 10
 type listener func(...interface{})
 
 type Event struct {
-	listeners []listener
+  listeners []listener
 }
 
 type Emitter struct {
-	events       map[string]*Event
-	maxListeners int
+  events       map[string]*Event
+  maxListeners int
 }
 
 /**
@@ -50,15 +50,15 @@ type Emitter struct {
  */
 
 func (emitter *Emitter) AddListener(e string, fn func(...interface{})) {
-	if nil == fn {
-		return
-	}
-	fn = listener(fn)
-	_, ok := emitter.events[e]
-	if !ok {
-		emitter.events[e] = &Event{[]listener{}}
-	}
-	emitter.events[e].listeners = append(emitter.events[e].listeners, fn)
+  if nil == fn {
+    return
+  }
+  fn = listener(fn)
+  _, ok := emitter.events[e]
+  if !ok {
+    emitter.events[e] = &Event{[]listener{}}
+  }
+  emitter.events[e].listeners = append(emitter.events[e].listeners, fn)
 }
 
 /**
@@ -68,7 +68,7 @@ func (emitter *Emitter) AddListener(e string, fn func(...interface{})) {
  */
 
 func (emitter *Emitter) On(e string, fn func(...interface{})) {
-	emitter.AddListener(e, fn)
+  emitter.AddListener(e, fn)
 }
 
 /**
@@ -81,13 +81,13 @@ func (emitter *Emitter) On(e string, fn func(...interface{})) {
  */
 
 func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
-	for _, x := range emitter.events {
-		for i, y := range x.listeners {
-			if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", fn) {
-				x.listeners = append(x.listeners[:i], x.listeners[i+1:]...)
-			}
-		}
-	}
+  for _, x := range emitter.events {
+    for i, y := range x.listeners {
+      if fmt.Sprintf("%v", y) == fmt.Sprintf("%v", fn) {
+        x.listeners = append(x.listeners[:i], x.listeners[i+1:]...)
+      }
+    }
+  }
 }
 
 /**
@@ -97,7 +97,7 @@ func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
  */
 
 func (emitter *Emitter) Off(fn func(...interface{})) {
-	emitter.RemoveListener(fn)
+  emitter.RemoveListener(fn)
 }
 
 /**
@@ -108,13 +108,13 @@ func (emitter *Emitter) Off(fn func(...interface{})) {
  */
 
 func (emitter *Emitter) Once(e string, fn func(...interface{})) {
-	if nil == fn {
-		return
-	}
-	emitter.AddListener(e, fn)
-	emitter.AddListener(e, func(args ...interface{}) {
-		emitter.RemoveListener(fn)
-	})
+  if nil == fn {
+    return
+  }
+  emitter.AddListener(e, fn)
+  emitter.AddListener(e, func(args ...interface{}) {
+    emitter.RemoveListener(fn)
+  })
 }
 
 /**
@@ -125,19 +125,19 @@ func (emitter *Emitter) Once(e string, fn func(...interface{})) {
  */
 
 func (emitter *Emitter) Emit(e string, args ...interface{}) {
-	if _, ok := emitter.events[e]; !ok {
-		return
-	}
-	var wg sync.WaitGroup
-	var listeners = emitter.events[e].listeners
-	wg.Add(len(listeners))
-	for _, fn := range listeners {
-		go func(fn listener) {
-			defer wg.Done()
-			fn(args...)
-		}(fn)
-	}
-	wg.Wait()
+  if _, ok := emitter.events[e]; !ok {
+    return
+  }
+  var wg sync.WaitGroup
+  var listeners = emitter.events[e].listeners
+  wg.Add(len(listeners))
+  for _, fn := range listeners {
+    go func(fn listener) {
+      defer wg.Done()
+      fn(args...)
+    }(fn)
+  }
+  wg.Wait()
 }
 
 /**
@@ -147,8 +147,8 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) {
  */
 
 func NewEmitter() *Emitter {
-	return &Emitter{
-		make(map[string]*Event),
-		DEFAULT_MAX_LISTENERS,
-	}
+  return &Emitter{
+    make(map[string]*Event),
+    DEFAULT_MAX_LISTENERS,
+  }
 }
