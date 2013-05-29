@@ -22,7 +22,7 @@ func (e *Emitter) AddListener(s string, l func(...interface{})) {
 	e.events[s].listeners = append(e.events[s].listeners, l)
 }
 
-func (e *Emitter) On(s string, l listener) {
+func (e *Emitter) On(s string, l func(...interface{})) {
 	e.AddListener(s, l)
 }
 
@@ -30,11 +30,11 @@ func (e *Emitter) RemoveListener(l func(...interface{})) {
 
 }
 
-func (e *Emitter) Off(l listener) {
+func (e *Emitter) Off(l func(...interface{})) {
 	e.RemoveListener(l)
 }
 
-func (e *Emitter) Once(s string, l listener) {
+func (e *Emitter) Once(s string, l func(...interface{})) {
 
 }
 
