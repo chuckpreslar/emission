@@ -1,12 +1,10 @@
-Installation
-============
+## Installation
 
 With Google's [Go](http://www.golang.org) installed on your machine:
 
     $ go get -u github.com/chuckpreslar/emission
 
-Usage
-=====
+## Usage
 
 If you've ever used an event emitter before, using Emission should be very familiar.
 
@@ -40,8 +38,8 @@ func main() {
 }
 ```
 
-Methods
-=======
+## Methods
+
 
 #### *#NewEmitter*
 
@@ -73,7 +71,7 @@ Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's l
 
 Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
 
-To Do's
-=======
+## To Do's
+
   * Implement the emitters maximum listener counts.
   * Potentially recover from panics caused within listener functions.
