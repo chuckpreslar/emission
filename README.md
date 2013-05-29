@@ -41,37 +41,32 @@ func main() {
 ## Methods
 
 
-#### *#NewEmitter*
+#### #NewEmitter
 
 Returns a pointer to an instance of an `Emitter` struct.
 
 ### Emitter Receiver Methods
 
-#### *#AddListener*
+#### #AddListener
 
 Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
 
-#### *#On*
+#### #On
 
 Alias method for `#AddListener`
 
-#### *#RemoveListener*
+#### #RemoveListener
 
 Takes a `func` argument, searches for a matching `func` listener within the Emitter's event listeners and removes it.
 
-#### *#Off*
+#### #Off
 
 Alias method for `#RemoveListener`
 
-#### *#Once*
+#### #Once
 
 Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's listener will only be called a maximum of one time before it is removed.
 
-#### *#Emit*
+#### #Emit
 
 Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
-
-## To Do's
-
-  * Implement the emitters maximum listener counts.
-  * Potentially recover from panics caused within listener functions.
