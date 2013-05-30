@@ -47,9 +47,9 @@ func main() {
 
 ### Emitter Receiver Methods
 
-#### AddListener
+* __AddListener__
 
-Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
+    Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
 
 * __On__
 
