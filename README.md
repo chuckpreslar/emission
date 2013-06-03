@@ -38,39 +38,12 @@ func main() {
 }
 ```
 
-## Methods
+## Documentation
 
+View godoc's
 
-* __NewEmitter__
-
-    Returns a pointer to an instance of an `Emitter` struct.
-
-### Emitter Receiver Methods
-
-* __AddListener__
-
-    Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
-
-* __On__
-
-    Alias method for `#AddListener`
-
-* __RemoveListener__
-
-    Takes a `func` argument, searches for a matching `func` listener within the Emitter's event listeners and removes it.
-
-* __Off__
-
-    Alias method for `#RemoveListener`
-
-* __Once__
-
-    Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's listener will only be called a maximum of one time before it is removed.
-
-* __Emit__
-
-    Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
-
+    $ godoc emission
+    
 ## License
 
 > The MIT License (MIT)
