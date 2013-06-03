@@ -11,11 +11,27 @@ func TestAddListener(t *testing.T) {
   emitter.AddListener(e, func(args ...interface{}) {
     return
   })
+
   event, ok := emitter.events[e]
+
   if !ok {
     t.Errorf("Expected AddListener to establish event %s.\n", e)
   } else if 1 != len((*event).listeners) {
     t.Errorf("Expected AddListener to add only 1 handler to registered event %s.\n", e)
+  }
+}
+
+func TestEmit(t *testing.T) {
+  flag := true
+  fn := func(args ...interface{}) {
+    flag = false
+  }
+
+  emitter.AddListener(e, fn).
+    Emit(e, nil)
+
+  if flag {
+    t.Errorf("Emit failed to call listener function.")
   }
 }
 
@@ -53,5 +69,22 @@ func TestOnce(t *testing.T) {
   } else if post := len((*emitter.events[e]).listeners); pre != post {
     t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
   }
+}
 
+func TestSetMaxListeners(t *testing.T) {
+  flag := false
+  pre := len((*emitter.events[e]).listeners)
+  fn := func(args ...interface{}) {
+    flag = true
+  }
+
+  emitter.SetMaxListeners(0).
+    AddListener(e, fn).
+    Emit(e, nil)
+
+  if flag {
+    t.Errorf("Listner was successfully added after lowering maxListeners.\n")
+  } else if post := len((*emitter.events[e]).listeners); pre != post {
+    t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
+  }
 }
