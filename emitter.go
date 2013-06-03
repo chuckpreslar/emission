@@ -44,9 +44,9 @@ type Emitter struct {
 
 // AddListener adds the listener function (fn) to the Emitter's event (e)
 // listener array.
-func (emitter *Emitter) AddListener(e string, fn func(...interface{})) {
+func (emitter *Emitter) AddListener(e string, fn func(...interface{})) *Emitter {
   if nil == fn {
-    return
+    return emitter
   }
   fn = listener(fn)
   _, ok := emitter.events[e]
@@ -57,18 +57,19 @@ func (emitter *Emitter) AddListener(e string, fn func(...interface{})) {
   if emitter.maxListeners >= len(event.listeners)+1 {
     event.listeners = append(event.listeners, fn)
   }
+  return emitter
 }
 
 // On is an alias method for Emmiter#AddListener.
-func (emitter *Emitter) On(e string, fn func(...interface{})) {
-  emitter.AddListener(e, fn)
+func (emitter *Emitter) On(e string, fn func(...interface{})) *Emitter {
+  return emitter.AddListener(e, fn)
 }
 
 // RemoveListener loops through an Emitter's events and listeners, comparing
 // the string value of the given listener function (fn) since go
 // does not allow you to compare functions.  If a match is found,
 // it is removed from the event's listeners array.
-func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
+func (emitter *Emitter) RemoveListener(fn func(...interface{})) *Emitter {
   for _, e := range emitter.events {
     for i, l := range e.listeners {
       if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
@@ -76,30 +77,32 @@ func (emitter *Emitter) RemoveListener(fn func(...interface{})) {
       }
     }
   }
+  return emitter
 }
 
 // Off is an alias method for #RemoveListener.
-func (emitter *Emitter) Off(fn func(...interface{})) {
-  emitter.RemoveListener(fn)
+func (emitter *Emitter) Off(fn func(...interface{})) *Emitter {
+  return emitter.RemoveListener(fn)
 }
 
 // Once adds a listener function (fn) to an event (e) that will run a maximum of one time
 // before being removed from it's listener array.
-func (emitter *Emitter) Once(e string, fn func(...interface{})) {
+func (emitter *Emitter) Once(e string, fn func(...interface{})) *Emitter {
   if nil == fn {
-    return
+    return emitter
   }
   emitter.AddListener(e, fn)
   emitter.AddListener(e, func(args ...interface{}) {
     emitter.RemoveListener(fn)
   })
+  return emitter
 }
 
 // Emit triggers an event (e), passing along arguments (args) to each of the event's
 // listeners.  Each listener function is ran as a go routine.
-func (emitter *Emitter) Emit(e string, args ...interface{}) {
+func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
   if _, ok := emitter.events[e]; !ok {
-    return
+    return emitter
   }
   var wg sync.WaitGroup
   var listeners = emitter.events[e].listeners
@@ -111,11 +114,13 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) {
     }(fn)
   }
   wg.Wait()
+  return emitter
 }
 
 // SetMaxListeners sets an emitters maximum listeners per event.
-func (emitter *Emitter) SetMaxListeners(max int) {
+func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
   emitter.maxListeners = max
+  return emitter
 }
 
 // Returns a pointer to an Emitter struct.
