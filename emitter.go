@@ -93,7 +93,6 @@ func (emitter *Emitter) Once(e string, fn func(...interface{})) *Emitter {
   }
   var run listener
   run = func(args ...interface{}) {
-    fmt.Println("In run")
     fn(args...)
     emitter.RemoveListener(run)
   }
