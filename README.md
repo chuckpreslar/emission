@@ -11,31 +11,42 @@ If you've ever used an event emitter before, using Emission should be very famil
 ```go
 package main
 
-import(
-  e "github.com/chuckpreslar/emission"
+import (
   "fmt"
+  e "github.com/chuckpreslar/emission"
 )
 
 func main() {
   emitter := e.NewEmitter()
-  
+
   a := func(args ...interface{}) {
     fmt.Println("Hello from `a`!", args)
   }
-  
+
   b := func(args ...interface{}) {
     fmt.Println("Hello from `b`!", args)
   }
-  
+
   emitter.On("test", a) // or emitter.AddListener("test", a)
-  emitter.On("test", b) //  ...
-  emitter.Emit("test", 1, 2, 3, 4)
-  
+  emitter.On("test", b).
+    On("hello", func(args ...interface{}) {
+    for _, value := range args {
+      fmt.Printf("Hello %v!\n", value)
+    }
+  })
+  emitter.Emit("test", 1, 2, 3, 4).
+    Emit("hello", "world").
+    Emit("hello", "Chuck")
+
   /**
    * Hello from `a`! [1 2 3 4]
    * Hello from `b`! [1 2 3 4]
+   * Hello world!
+   * Hello Chuck!
    */
+
 }
+
 ```
 
 ## Documentation
