@@ -41,32 +41,57 @@ func main() {
 ## Methods
 
 
-#### NewEmitter
+* __NewEmitter__
 
-Returns a pointer to an instance of an `Emitter` struct.
+    Returns a pointer to an instance of an `Emitter` struct.
 
 ### Emitter Receiver Methods
 
-#### AddListener
+* __AddListener__
 
-Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
+    Takes arguments of a `string` (event name), and a `func` (event listener) to be called when the event occurs (or is emitted).
 
-#### On
+* __On__
 
-Alias method for `#AddListener`
+    Alias method for `#AddListener`
 
-#### RemoveListener
+* __RemoveListener__
 
-Takes a `func` argument, searches for a matching `func` listener within the Emitter's event listeners and removes it.
+    Takes a `func` argument, searches for a matching `func` listener within the Emitter's event listeners and removes it.
 
-#### Off
+* __Off__
 
-Alias method for `#RemoveListener`
+    Alias method for `#RemoveListener`
 
-#### Once
+* __Once__
 
-Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's listener will only be called a maximum of one time before it is removed.
+    Similar to `#AddListener` or `#On`, `#Once` takes the same parameters but it's listener will only be called a maximum of one time before it is removed.
 
-#### Emit
+* __Emit__
 
-Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
+    Takes a `string` representing the event to emit, and arguments of type `interface` to pass along to any event listeners.  Each listener function is ran as a go routine.
+
+## License
+
+> The MIT License (MIT)
+
+> Copyright (c) 2013 Chuck Preslar
+
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+
+> The above copyright notice and this permission notice shall be included in
+> all copies or substantial portions of the Software.
+
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+> THE SOFTWARE.
+
