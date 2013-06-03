@@ -91,10 +91,13 @@ func (emitter *Emitter) Once(e string, fn func(...interface{})) *Emitter {
   if nil == fn {
     return emitter
   }
-  emitter.AddListener(e, fn)
-  emitter.AddListener(e, func(args ...interface{}) {
-    emitter.RemoveListener(fn)
-  })
+  var run listener
+  run = func(args ...interface{}) {
+    fmt.Println("In run")
+    fn(args...)
+    emitter.RemoveListener(run)
+  }
+  emitter.AddListener(e, run)
   return emitter
 }
 
