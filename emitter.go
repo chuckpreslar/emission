@@ -69,11 +69,12 @@ func (emitter *Emitter) On(e string, fn func(...interface{})) *Emitter {
 // the string value of the given listener function (fn) since go
 // does not allow you to compare functions.  If a match is found,
 // it is removed from the event's listeners array.
-func (emitter *Emitter) RemoveListener(fn func(...interface{})) *Emitter {
-  for _, e := range emitter.events {
-    for i, l := range e.listeners {
+func (emitter *Emitter) RemoveListener(e string, fn func(...interface{})) *Emitter {
+  ev, ok := emitter.events[e]
+  if ok {
+    for i, l := range ev.listeners {
       if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
-        e.listeners = append(e.listeners[:i], e.listeners[i+1:]...)
+        ev.listeners = append(ev.listeners[:i], ev.listeners[i+1:]...)
       }
     }
   }
@@ -81,8 +82,8 @@ func (emitter *Emitter) RemoveListener(fn func(...interface{})) *Emitter {
 }
 
 // Off is an alias method for #RemoveListener.
-func (emitter *Emitter) Off(fn func(...interface{})) *Emitter {
-  return emitter.RemoveListener(fn)
+func (emitter *Emitter) Off(e string, fn func(...interface{})) *Emitter {
+  return emitter.RemoveListener(e, fn)
 }
 
 // Once adds a listener function (fn) to an event (e) that will run a maximum of one time
@@ -94,7 +95,7 @@ func (emitter *Emitter) Once(e string, fn func(...interface{})) *Emitter {
   var run listener
   run = func(args ...interface{}) {
     fn(args...)
-    emitter.RemoveListener(run)
+    emitter.RemoveListener(e, run)
   }
   emitter.AddListener(e, run)
   return emitter

@@ -43,7 +43,7 @@ func TestRemoveListener(t *testing.T) {
   }
 
   emitter.AddListener(e, fn).
-    RemoveListener(fn).
+    RemoveListener(e, fn).
     Emit(e, nil)
 
   if flag {
