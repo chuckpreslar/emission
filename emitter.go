@@ -40,6 +40,7 @@ type event struct {
 type Emitter struct {
   events       map[string]*event
   maxListeners int
+  mutex        *sync.Mutex
 }
 
 // AddListener adds the listener function (fn) to the Emitter's event (e)
@@ -55,7 +56,9 @@ func (emitter *Emitter) AddListener(e string, fn func(...interface{})) *Emitter 
   }
   event := emitter.events[e]
   if emitter.maxListeners >= len(event.listeners)+1 {
+    emitter.mutex.Lock()
     event.listeners = append(event.listeners, fn)
+    emitter.mutex.Unlock()
   }
   return emitter
 }
@@ -74,7 +77,9 @@ func (emitter *Emitter) RemoveListener(e string, fn func(...interface{})) *Emitt
   if ok {
     for i, l := range ev.listeners {
       if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
+        emitter.mutex.Lock()
         ev.listeners = append(ev.listeners[:i], ev.listeners[i+1:]...)
+        emitter.mutex.Unlock()
       }
     }
   }
@@ -131,5 +136,6 @@ func NewEmitter() *Emitter {
   return &Emitter{
     make(map[string]*event),
     DEFAULT_MAX_LISTENERS,
+    new(sync.Mutex),
   }
 }
