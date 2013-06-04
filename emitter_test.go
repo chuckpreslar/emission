@@ -54,18 +54,18 @@ func TestRemoveListener(t *testing.T) {
 }
 
 func TestOnce(t *testing.T) {
-  flag := true
+  count := 0
   pre := len((*emitter.events[e]).listeners)
   fn := func(args ...interface{}) {
-    flag = !flag
+    count++
   }
 
   emitter.Once(e, fn).
     Emit(e, nil).
     Emit(e, nil)
 
-  if flag {
-    t.Errorf("Listner was called twice, reset to %v.\n", flag)
+  if count != 1 {
+    t.Errorf("Listner was called %d times, expected to be called only once.\n", count)
   } else if post := len((*emitter.events[e]).listeners); pre != post {
     t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
   }
