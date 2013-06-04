@@ -63,7 +63,7 @@ func (emitter *Emitter) AddListener(e string, fn func(...interface{})) *Emitter 
   return emitter
 }
 
-// On is an alias method for Emmiter#AddListener.
+// On is an alias method for AddListener.
 func (emitter *Emitter) On(e string, fn func(...interface{})) *Emitter {
   return emitter.AddListener(e, fn)
 }
@@ -86,7 +86,7 @@ func (emitter *Emitter) RemoveListener(e string, fn func(...interface{})) *Emitt
   return emitter
 }
 
-// Off is an alias method for #RemoveListener.
+// Off is an alias method for RemoveListener.
 func (emitter *Emitter) Off(e string, fn func(...interface{})) *Emitter {
   return emitter.RemoveListener(e, fn)
 }
