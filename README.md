@@ -51,7 +51,7 @@ func main() {
 
 ## Documentation
 
-View godoc's or visit [godoc.org](http://godoc.org/github.com/chuckpreslar/emission)
+View godoc's or visit [godoc.org](http://godoc.org/github.com/chuckpreslar/emission).
 
     $ godoc emission
     
