@@ -45,13 +45,12 @@ type Emitter struct {
 
 // AddListener adds the listener function (fn) to the Emitter's event (e)
 // listener array.
-func (emitter *Emitter) AddListener(e string, fn func(...interface{})) *Emitter {
+func (emitter *Emitter) AddListener(e string, fn listener) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
   if nil == fn {
     return emitter
   }
-  fn = listener(fn)
   _, ok := emitter.events[e]
   if !ok {
     emitter.events[e] = &event{[]listener{}}
@@ -64,7 +63,7 @@ func (emitter *Emitter) AddListener(e string, fn func(...interface{})) *Emitter 
 }
 
 // On is an alias method for AddListener.
-func (emitter *Emitter) On(e string, fn func(...interface{})) *Emitter {
+func (emitter *Emitter) On(e string, fn listener) *Emitter {
   return emitter.AddListener(e, fn)
 }
 
@@ -72,7 +71,7 @@ func (emitter *Emitter) On(e string, fn func(...interface{})) *Emitter {
 // the string value of the given listener function (fn) since go
 // does not allow you to compare functions.  If a match is found,
 // it is removed from the event's listeners array.
-func (emitter *Emitter) RemoveListener(e string, fn func(...interface{})) *Emitter {
+func (emitter *Emitter) RemoveListener(e string, fn listener) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
   ev, ok := emitter.events[e]
@@ -87,13 +86,13 @@ func (emitter *Emitter) RemoveListener(e string, fn func(...interface{})) *Emitt
 }
 
 // Off is an alias method for RemoveListener.
-func (emitter *Emitter) Off(e string, fn func(...interface{})) *Emitter {
+func (emitter *Emitter) Off(e string, fn listener) *Emitter {
   return emitter.RemoveListener(e, fn)
 }
 
 // Once adds a listener function (fn) to an event (e) that will run a maximum of one time
 // before being removed from it's listener array.
-func (emitter *Emitter) Once(e string, fn func(...interface{})) *Emitter {
+func (emitter *Emitter) Once(e string, fn listener) *Emitter {
   if nil == fn {
     return emitter
   }
