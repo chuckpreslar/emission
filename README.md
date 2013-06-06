@@ -1,3 +1,10 @@
+emission
+--------
+
+A simple event emitter for Go.
+
+[![Build Status](https://drone.io/github.com/chuckpreslar/emission/status.png)](https://drone.io/github.com/chuckpreslar/emission/latest)
+
 ## Installation
 
 With Google's [Go](http://www.golang.org) installed on your machine:
@@ -51,7 +58,7 @@ func main() {
 
 ## Documentation
 
-View godoc's
+View godoc's or visit [godoc.org](http://godoc.org/github.com/chuckpreslar/emission).
 
     $ godoc emission
     
