@@ -109,21 +109,16 @@ func (emitter *Emitter) Once(e string, fn listener) *Emitter {
 
 // Throttled is an event handler `fn` for event `e` that can only be called once within a given
 // duration `interval` (in milliseconds)
-func (emitter *Emitter) Throttled(e string, interval time.Duration, fn listener) *Emitter {
+func (emitter *Emitter) Throttled(e string, interval time.Duration,
+  fn listener) *Emitter {
   var init int64
   emitter.AddListener(e, func(args ...interface{}) {
     if init == 0 {
-      t0 := time.Now()
-      init, _ = strconv.ParseInt(fmt.Sprintf("%d%03d", t0.Unix(), t0.Nanosecond()/1e6), 10, 64)
-    } else {
-      tn := time.Now()
-      current, _ := strconv.ParseInt(fmt.Sprintf("%d%03d", tn.Unix(), tn.Nanosecond()/1e6), 10, 64)
-      if (current - (int64(interval) / 1e6)) <= init {
-        return
-      }
+      init = emitter.timestamp()
+    } else if (emitter.timestamp() - (int64(interval) / 1e6)) <= init {
+      return
     }
-    t := time.Now()
-    init, _ = strconv.ParseInt(fmt.Sprintf("%d%03d", t.Unix(), t.Nanosecond()/1e6), 10, 64)
+    init = emitter.timestamp()
     fn(args...)
   })
   return emitter
@@ -152,6 +147,13 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
   emitter.maxListeners = max
   return emitter
+}
+
+// timestamp is a helper function to generate an accurate UNIX timestamp.
+func (emitter *Emitter) timestamp() int64 {
+  t := time.Now()
+  ts, _ := strconv.ParseInt(fmt.Sprintf("%d%03d", t.Unix(), t.Nanosecond()/1e6), 10, 64)
+  return ts
 }
 
 // Returns a pointer to an Emitter struct.
