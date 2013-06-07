@@ -25,7 +25,9 @@ package emission
 
 import (
   "fmt"
+  "strconv"
   "sync"
+  "time"
 )
 
 // Maximum number of listeners an event can have.
@@ -102,6 +104,28 @@ func (emitter *Emitter) Once(e string, fn listener) *Emitter {
     emitter.RemoveListener(e, run)
   }
   emitter.AddListener(e, run)
+  return emitter
+}
+
+// Throttled is an event handler `fn` for event `e` that can only be called once within a given
+// duration `interval` (in milliseconds)
+func (emitter *Emitter) Throttled(e string, interval time.Duration, fn listener) *Emitter {
+  var init int64
+  emitter.AddListener(e, func(args ...interface{}) {
+    if init == 0 {
+      t0 := time.Now()
+      init, _ = strconv.ParseInt(fmt.Sprintf("%d%03d", t0.Unix(), t0.Nanosecond()/1e6), 10, 64)
+    } else {
+      tn := time.Now()
+      current, _ := strconv.ParseInt(fmt.Sprintf("%d%03d", tn.Unix(), tn.Nanosecond()/1e6), 10, 64)
+      if (current - (int64(interval) / 1e6)) <= init {
+        return
+      }
+    }
+    t := time.Now()
+    init, _ = strconv.ParseInt(fmt.Sprintf("%d%03d", t.Unix(), t.Nanosecond()/1e6), 10, 64)
+    fn(args...)
+  })
   return emitter
 }
 

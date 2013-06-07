@@ -1,7 +1,9 @@
 package emission
 
 import (
+  "fmt"
   "testing"
+  "time"
 )
 
 var emitter *Emitter = NewEmitter()
@@ -71,6 +73,36 @@ func TestOnce(t *testing.T) {
   }
 }
 
+func TestThrottled(t *testing.T) {
+  flag := 0
+  interval := 1
+  duration := time.Duration(interval) * time.Millisecond
+  fn := func(args ...interface{}) {
+    flag++
+  }
+
+  emitter.Throttled(e, duration, fn)
+
+  for i := 0; i < 3; i++ {
+    emitter.
+      Emit(e).
+      Emit(e).
+      Emit(e)
+    if flag != i {
+      t.Logf("Expected only one call to throttled"+
+        "function within %d ns, was called %v times.\n", interval, flag)
+    }
+    time.Sleep(duration * 2)
+  }
+
+  fmt.Printf("Throttled function was called %v times in %v.\n", flag, 3*duration)
+
+  if flag != 3 {
+    t.Errorf("Expected the throtted function"+
+      " to be called a minimum of 3 times, was called %v times.\n", flag)
+  }
+}
+
 func TestSetMaxListeners(t *testing.T) {
   flag := false
   pre := len((*emitter.events[e]).listeners)
@@ -87,4 +119,5 @@ func TestSetMaxListeners(t *testing.T) {
   } else if post := len((*emitter.events[e]).listeners); pre != post {
     t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
   }
+  emitter.SetMaxListeners(DEFAULT_MAX_LISTENERS)
 }
