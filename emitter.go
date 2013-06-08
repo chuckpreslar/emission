@@ -108,7 +108,7 @@ func (emitter *Emitter) Once(e string, fn listener) *Emitter {
 }
 
 // Throttled is an event handler `fn` for event `e` that can only be called once within a given
-// duration `interval` (in milliseconds)
+// duration `interval` (in milliseconds).
 //
 // TODO: A throttled function currently has no way of being removed.
 func (emitter *Emitter) Throttled(e string, interval time.Duration,
