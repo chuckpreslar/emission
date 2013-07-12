@@ -2,7 +2,7 @@
 package emission
 
 import (
-  "fmt"
+  "reflect"
   "sync"
   "time"
 )
@@ -75,6 +75,10 @@ func (emitter *Emitter) On(e string, fn listener) *Emitter {
   return emitter.AddListener(e, fn)
 }
 
+func (a listener) Equals(b listener) bool {
+  return reflect.ValueOf(a) == reflect.ValueOf(b)
+}
+
 // RemoveListener loops through an Emitter's events and listeners, comparing
 // the string value of the given listener function (fn) since go
 // does not allow you to compare functions.  If a match is found,
@@ -85,12 +89,12 @@ func (emitter *Emitter) RemoveListener(e string, fn listener) *Emitter {
   ev, ok := emitter.events[e]
   if ok {
     for i, l := range ev.listeners {
-      if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
+      if l.Equals(fn) {
         ev.listeners = append(ev.listeners[:i], ev.listeners[i+1:]...)
       }
     }
     for i, t := range ev.throttles {
-      if fmt.Sprintf("%v", t.fn) == fmt.Sprintf("%v", fn) {
+      if t.fn.Equals(fn) {
         ev.throttles = append(ev.throttles[:i], ev.throttles[i+1:]...)
       }
     }

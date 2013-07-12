@@ -71,7 +71,7 @@ func TestOnce(t *testing.T) {
     Emit(e, nil)
 
   if count != 1 {
-    t.Errorf("Listner was called %d times, expected to be called only once.\n", count)
+    t.Errorf("Listener was called %d times, expected to be called only once.\n", count)
   } else if post := len((*emitter.events[e]).listeners); pre != post {
     t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
   }
