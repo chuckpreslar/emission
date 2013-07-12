@@ -48,6 +48,10 @@ func TestRemoveListener(t *testing.T) {
     RemoveListener(e, fn).
     Emit(e, nil)
 
+  emitter.Throttled(e, 1*time.Millisecond, fn).
+    RemoveListener(e, fn).
+    Emit(e, nil)
+
   if flag {
     t.Errorf("Unremoved listener modified flag variable, set to %v.\n", flag)
   } else if post := len((*emitter.events[e]).listeners); pre != post {
@@ -67,7 +71,7 @@ func TestOnce(t *testing.T) {
     Emit(e, nil)
 
   if count != 1 {
-    t.Errorf("Listner was called %d times, expected to be called only once.\n", count)
+    t.Errorf("Listener was called %d times, expected to be called only once.\n", count)
   } else if post := len((*emitter.events[e]).listeners); pre != post {
     t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
   }
@@ -75,8 +79,7 @@ func TestOnce(t *testing.T) {
 
 func TestThrottled(t *testing.T) {
   flag := 0
-  interval := 1
-  duration := time.Duration(interval) * time.Millisecond
+  duration := 1 * time.Millisecond
   fn := func(args ...interface{}) {
     flag++
   }
@@ -90,7 +93,7 @@ func TestThrottled(t *testing.T) {
       Emit(e)
     if flag != i {
       t.Logf("Expected only one call to throttled"+
-        "function within %d ns, was called %v times.\n", interval, flag)
+        "function within %v, was called %v times.\n", duration, flag)
     }
     time.Sleep(duration * 2)
   }
@@ -99,7 +102,7 @@ func TestThrottled(t *testing.T) {
 
   if flag != 3 {
     t.Errorf("Expected the throtted function"+
-      " to be called a minimum of 3 times, was called %v times.\n", flag)
+      " to be called exactly 3 times, was called %v times.\n", flag)
   }
 }
 
@@ -112,6 +115,7 @@ func TestSetMaxListeners(t *testing.T) {
 
   emitter.SetMaxListeners(0).
     AddListener(e, fn).
+    Throttled(e, 1*time.Millisecond, fn).
     Emit(e, nil)
 
   if flag {
