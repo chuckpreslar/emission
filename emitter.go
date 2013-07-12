@@ -79,10 +79,8 @@ func (a listener) Equals(b listener) bool {
   return reflect.ValueOf(a) == reflect.ValueOf(b)
 }
 
-// RemoveListener loops through an Emitter's events and listeners, comparing
-// the string value of the given listener function (fn) since go
-// does not allow you to compare functions.  If a match is found,
-// it is removed from the event's listeners array.
+// RemoveListener removes any listener added with AddListener or Throttled on
+// event `e` that delegates to func `fn`.
 func (emitter *Emitter) RemoveListener(e string, fn listener) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
