@@ -2,8 +2,7 @@
 package emission
 
 import (
-  "fmt"
-  "strconv"
+  "reflect"
   "sync"
   "time"
 )
@@ -13,8 +12,15 @@ const DEFAULT_MAX_LISTENERS = 10
 
 type listener func(...interface{})
 
+type throttle struct {
+  lastCalled time.Time
+  interval   time.Duration
+  fn         listener
+}
+
 type event struct {
   listeners []listener
+  throttles []*throttle
 }
 
 type Emitter struct {
@@ -23,8 +29,12 @@ type Emitter struct {
   mutex        sync.Mutex
 }
 
-// AddListener adds the listener function (fn) to the Emitter's event (e)
-// listener array.
+func createEvent() *event {
+  return &event{[]listener{}, []*throttle{}}
+}
+
+// AddListener appends the listener function `fn` to the Emitter's listeners
+// for event `e`.
 func (emitter *Emitter) AddListener(e string, fn listener) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
@@ -33,11 +43,29 @@ func (emitter *Emitter) AddListener(e string, fn listener) *Emitter {
   }
   _, ok := emitter.events[e]
   if !ok {
-    emitter.events[e] = &event{[]listener{}}
+    emitter.events[e] = createEvent()
   }
   event := emitter.events[e]
-  if emitter.maxListeners >= len(event.listeners)+1 {
+  if emitter.maxListeners >= len(event.listeners)+len(event.throttles)+1 {
     event.listeners = append(event.listeners, fn)
+  }
+  return emitter
+}
+
+// addThrottle appends the throttle `t` to the event's throttles slice.
+func (emitter *Emitter) addThrottle(e string, t *throttle) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+  if nil == t.fn {
+    return emitter
+  }
+  _, ok := emitter.events[e]
+  if !ok {
+    emitter.events[e] = createEvent()
+  }
+  event := emitter.events[e]
+  if emitter.maxListeners >= len(event.listeners)+len(event.throttles)+1 {
+    event.throttles = append(event.throttles, t)
   }
   return emitter
 }
@@ -47,18 +75,25 @@ func (emitter *Emitter) On(e string, fn listener) *Emitter {
   return emitter.AddListener(e, fn)
 }
 
-// RemoveListener loops through an Emitter's events and listeners, comparing
-// the string value of the given listener function (fn) since go
-// does not allow you to compare functions.  If a match is found,
-// it is removed from the event's listeners array.
+func (a listener) Equals(b listener) bool {
+  return reflect.ValueOf(a) == reflect.ValueOf(b)
+}
+
+// RemoveListener removes any listener added with AddListener or Throttled on
+// event `e` that delegates to func `fn`.
 func (emitter *Emitter) RemoveListener(e string, fn listener) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
   ev, ok := emitter.events[e]
   if ok {
     for i, l := range ev.listeners {
-      if fmt.Sprintf("%v", l) == fmt.Sprintf("%v", fn) {
+      if l.Equals(fn) {
         ev.listeners = append(ev.listeners[:i], ev.listeners[i+1:]...)
+      }
+    }
+    for i, t := range ev.throttles {
+      if t.fn.Equals(fn) {
+        ev.throttles = append(ev.throttles[:i], ev.throttles[i+1:]...)
       }
     }
   }
@@ -70,8 +105,8 @@ func (emitter *Emitter) Off(e string, fn listener) *Emitter {
   return emitter.RemoveListener(e, fn)
 }
 
-// Once adds a listener function (fn) to an event (e) that will run a maximum of one time
-// before being removed from it's listener array.
+// Once adds a listener function `fn` to an event `e` that will run a maximum of
+// one time before being removed from it's listener array.
 func (emitter *Emitter) Once(e string, fn listener) *Emitter {
   if nil == fn {
     return emitter
@@ -85,55 +120,71 @@ func (emitter *Emitter) Once(e string, fn listener) *Emitter {
   return emitter
 }
 
-// Throttled is an event handler `fn` for event `e` that can only be called once within a given
-// duration `interval` (in milliseconds).
-//
-// TODO: A throttled function currently has no way of being removed.
-func (emitter *Emitter) Throttled(e string, interval time.Duration,
-  fn listener) *Emitter {
-  var init int64
-  emitter.AddListener(e, func(args ...interface{}) {
-    if init == 0 {
-      init = emitter.timestamp()
-    } else if (emitter.timestamp() - (int64(interval) / 1e6)) <= init {
-      return
-    }
-    init = emitter.timestamp()
-    fn(args...)
-  })
-  return emitter
+func (t *throttle) handler(args ...interface{}) {
+  if t.lastCalled.IsZero() {
+    t.lastCalled = time.Now()
+  } else if time.Now().Sub(t.lastCalled) < t.interval {
+    return
+  }
+  t.lastCalled = time.Now()
+  t.fn(args...)
 }
 
-// Emit triggers an event (e), passing along arguments (args) to each of the event's
-// listeners.  Each listener function is ran as a go routine.
+// Throttled is an event handler `fn` for event `e` that can only be called once
+// within a given duration `interval`.
+func (emitter *Emitter) Throttled(e string, interval time.Duration,
+  fn listener) *Emitter {
+  return emitter.addThrottle(e, &throttle{time.Time{}, interval, fn})
+}
+
+// Emit triggers an event `e`, passing along arguments `args` to each of the
+// event's listeners.  Each listener function is ran as a goroutine.
 func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
   if _, ok := emitter.events[e]; !ok {
     return emitter
   }
+  ev := emitter.events[e]
   var wg sync.WaitGroup
-  var listeners = emitter.events[e].listeners
-  wg.Add(len(listeners))
-  for _, fn := range listeners {
+  wg.Add(len(ev.listeners) + len(ev.throttles))
+  for _, fn := range ev.listeners {
     go func(fn listener) {
       defer wg.Done()
       fn(args...)
     }(fn)
   }
+  for _, t := range ev.throttles {
+    go func(t *throttle) {
+      defer wg.Done()
+      t.handler(args...)
+    }(t)
+  }
   wg.Wait()
   return emitter
 }
 
-// SetMaxListeners sets an emitters maximum listeners per event.
-func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
-  emitter.maxListeners = max
+// EmitSync trigger an event `e`, passing arguments `args` to each of the
+// event's listeners.  Each listener function is ran synchronously in the order
+// that each listener was added to the event.
+func (emitter *Emitter) EmitSync(e string, args ...interface{}) *Emitter {
+  if _, ok := emitter.events[e]; !ok {
+    return emitter
+  }
+  var listeners = emitter.events[e].listeners
+  var throttles = emitter.events[e].throttles
+  for _, fn := range listeners {
+    fn(args...)
+  }
+  for _, t := range throttles {
+    t.handler(args...)
+  }
   return emitter
 }
 
-// timestamp is a helper function to generate an accurate UNIX timestamp.
-func (emitter *Emitter) timestamp() int64 {
-  t := time.Now()
-  ts, _ := strconv.ParseInt(fmt.Sprintf("%d%03d", t.Unix(), t.Nanosecond()/1e6), 10, 64)
-  return ts
+// SetMaxListeners sets an emitters maximum listeners per event.
+// SetMaxListeners will not discard existing listeners beyond the new limit.
+func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
+  emitter.maxListeners = max
+  return emitter
 }
 
 // Returns a pointer to an Emitter struct.
