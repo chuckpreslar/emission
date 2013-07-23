@@ -140,6 +140,9 @@ func (emitter *Emitter) Throttled(e string, interval time.Duration,
 // Emit triggers an event `e`, passing along arguments `args` to each of the
 // event's listeners.  Each listener function is ran as a goroutine.
 func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   if _, ok := emitter.events[e]; !ok {
     return emitter
   }
@@ -166,6 +169,9 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
 // event's listeners.  Each listener function is ran synchronously in the order
 // that each listener was added to the event.
 func (emitter *Emitter) EmitSync(e string, args ...interface{}) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   if _, ok := emitter.events[e]; !ok {
     return emitter
   }
@@ -183,6 +189,9 @@ func (emitter *Emitter) EmitSync(e string, args ...interface{}) *Emitter {
 // SetMaxListeners sets an emitters maximum listeners per event.
 // SetMaxListeners will not discard existing listeners beyond the new limit.
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   emitter.maxListeners = max
   return emitter
 }
