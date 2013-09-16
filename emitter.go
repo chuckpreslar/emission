@@ -124,7 +124,8 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
 }
 
 // SetMaxListeners sets an emitters maximum listeners per event.
-// If `max` is passed
+// If the value passed for argument `max`, then the Emitter's
+// events can have unlimited listeners.
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
   emitter.maxListeners = max
   return emitter
