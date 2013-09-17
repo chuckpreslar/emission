@@ -2,74 +2,69 @@
 package emission
 
 import (
+  "errors"
+  "fmt"
+  "os"
   "reflect"
   "sync"
 )
 
 const (
-  DEFAULT_MAX_LISTENERS = 10
+  DefaultMaxListeners = 10
 )
 
-type Listener func(...interface{})
-
-// Equals compares the reflect Value of the listener
-// to another.
-func (l Listener) Equals(o Listener) bool {
-  return reflect.ValueOf(l) == reflect.ValueOf(o)
-}
-
-// Execute calls `l(args...)`.
-func (l Listener) Execute(args ...interface{}) {
-  l(args...)
-}
-
-type Event struct {
-  listeners []Listener // The registered Listener functions of the event.
-}
+var (
+  ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
+)
 
 type Emitter struct {
-  events       map[string]*Event // A map of string to a pointer for an Event.
-  maxListeners int               // Maximum number of Listener functions per event for an emitter.
+  events       map[interface{}][]reflect.Value
+  maxListeners int
 }
 
-// AddListener adds the Listener function (fn) to the Emitter's event (e)
-// listener array.
-func (emitter *Emitter) AddListener(e string, fn Listener) *Emitter {
-  if nil == fn {
-    return emitter
+// AddListener appends the listener argument to the event arguments slice
+// in the Emitter's events map. If the number of listeners for an event
+// is greater than the Emitter's maximum listeners then a warning is printed.
+// If the relect Value of the listener does not have a Kind of Func then
+// AddListener panics.
+func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
+  fn := reflect.ValueOf(listener)
+
+  if reflect.Func != fn.Kind() {
+    panic(ErrNoneFunction)
   }
 
-  var (
-    event *Event
-    ok    bool
-  )
-
-  if event, ok = emitter.events[e]; !ok {
-    event = &Event{[]Listener{}}
-    emitter.events[e] = event
+  if emitter.maxListeners != -1 && emitter.maxListeners < len(emitter.events[event])+1 {
+    fmt.Fprintf(os.Stdout, "Warning: event `%v` has exceeded the maximum "+
+      "number of listeners of %d.\n", event, emitter.maxListeners)
   }
 
-  if emitter.maxListeners == -1 || emitter.maxListeners >= len(event.listeners)+1 {
-    event.listeners = append(event.listeners, fn)
-  }
+  emitter.events[event] = append(emitter.events[event], fn)
 
   return emitter
 }
 
-// On is an alias method for AddListener.
-func (emitter *Emitter) On(e string, fn Listener) *Emitter {
-  return emitter.AddListener(e, fn)
+// On is an alias for AddListener.
+func (emitter *Emitter) On(event, listener interface{}) *Emitter {
+  return emitter.AddListener(event, listener)
 }
 
-// RemoveListener loops through an Emitter's events and listeners, comparing
-// the string value of the given Listener function (fn) since go
-// does not allow you to compare functions.  If a match is found,
-// it is removed from the event's listeners array.
-func (emitter *Emitter) RemoveListener(e string, fn Listener) *Emitter {
-  if ev, ok := emitter.events[e]; ok {
-    for i, l := range ev.listeners {
-      if fn.Equals(l) {
-        ev.listeners = append(ev.listeners[:i], ev.listeners[i+1:]...)
+// RemoveListener removes the listener argument from the event arguments slice
+// in the Emitter's events map.  If the reflect Value of the listener does not
+// have a Kind of Func then RemoveListener panics.
+func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
+  fn := reflect.ValueOf(listener)
+
+  if reflect.Func != fn.Kind() {
+    panic(ErrNoneFunction)
+  }
+
+  if events, ok := emitter.events[event]; ok {
+    for i, listener := range events {
+      if fn == listener {
+        // Do not break here to ensure the listener has not been
+        // added more than once.
+        emitter.events[event] = append(emitter.events[event][:i], emitter.events[event][i+1:]...)
       }
     }
   }
@@ -77,45 +72,70 @@ func (emitter *Emitter) RemoveListener(e string, fn Listener) *Emitter {
   return emitter
 }
 
-// Off is an alias method for RemoveListener.
-func (emitter *Emitter) Off(e string, fn Listener) *Emitter {
-  return emitter.RemoveListener(e, fn)
+// Off is an alias for RemoveListener.
+func (emitter *Emitter) Off(event, listener interface{}) *Emitter {
+  return emitter.RemoveListener(event, listener)
 }
 
-// Once adds a Listener function (fn) to an event (e) that will run a maximum of one time
-// before being removed from it's listeners array.
-func (emitter *Emitter) Once(e string, fn Listener) *Emitter {
-  if nil == fn {
-    return emitter
+// Once generates a new function which invokes the supplied listener
+// only once before removing itself from the event's listener slice
+// in the Emitter's events map. If the reflect Value of the listener
+// does not have a Kind of Func then Once panics.
+func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
+  fn := reflect.ValueOf(listener)
+
+  if reflect.Func != fn.Kind() {
+    panic(ErrNoneFunction)
   }
 
-  var run Listener
+  var run func(...interface{})
 
-  run = func(args ...interface{}) {
-    fn.Execute(args...)
-    emitter.RemoveListener(e, run)
+  run = func(arguments ...interface{}) {
+    var values []reflect.Value
+
+    for i := 0; i < len(arguments); i++ {
+      values = append(values, reflect.ValueOf(arguments[i]))
+    }
+
+    fn.Call(values)
+    emitter.RemoveListener(event, run)
   }
 
-  emitter.AddListener(e, run)
+  emitter.AddListener(event, run)
   return emitter
 }
 
-// Emit triggers an event (e), passing along arguments (args) to each of the event's
-// listeners.  Each Listener function is ran as a go routine.
-func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
-  if _, ok := emitter.events[e]; !ok {
+// Emit attempts to use the reflect package to Call each listener stored
+// in the Emitter's events map with the supplied arguments. Each listener
+// is called within its own go routine. The reflect package will panic if
+// the agruments supplied do not align the parameters of a listener function.
+func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitter {
+  var (
+    listeners []reflect.Value
+    ok        bool
+  )
+
+  if listeners, ok = emitter.events[event]; !ok {
+    // If the Emitter does not include the event in its
+    // event map, it has no listeners to Call yet.
     return emitter
   }
 
-  var wg sync.WaitGroup
-  var listeners = emitter.events[e].listeners
+  var (
+    wg     sync.WaitGroup
+    values []reflect.Value
+  )
+
+  for i := 0; i < len(arguments); i++ {
+    values = append(values, reflect.ValueOf(arguments[i]))
+  }
 
   wg.Add(len(listeners))
 
   for _, fn := range listeners {
-    go func(fn Listener) {
+    go func(fn reflect.Value) {
       defer wg.Done()
-      fn.Execute(args...)
+      fn.Call(values)
     }(fn)
   }
 
@@ -123,18 +143,22 @@ func (emitter *Emitter) Emit(e string, args ...interface{}) *Emitter {
   return emitter
 }
 
-// SetMaxListeners sets an emitters maximum listeners per event.
-// If the value passed for argument `max`, then the Emitter's
-// events can have unlimited listeners.
+// SetMaxListeners sets the maximum number of listeners per
+// event for the Emitter. If -1 is passed as the maximum,
+// all events may have unlimited listeners. By default, each
+// event can have a maximum number of 10 listeners which is
+// useful for finding memory leaks.
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
   emitter.maxListeners = max
   return emitter
 }
 
-// Returns a pointer to an Emitter struct.
+// NewEmitter returns a new Emitter object, defaulting the
+// number of maximum listeners per event to the DefaultMaxListeners
+// constant and initializing its events map.
 func NewEmitter() (emitter *Emitter) {
   emitter = new(Emitter)
-  emitter.events = make(map[string]*Event)
-  emitter.maxListeners = DEFAULT_MAX_LISTENERS
+  emitter.events = make(map[interface{}][]reflect.Value)
+  emitter.maxListeners = DefaultMaxListeners
   return
 }

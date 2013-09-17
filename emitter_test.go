@@ -4,88 +4,53 @@ import (
   "testing"
 )
 
-var emitter *Emitter = NewEmitter()
-var e string = "test"
-
 func TestAddListener(t *testing.T) {
-  emitter.AddListener(e, func(args ...interface{}) {
-    return
-  })
+  event := "test"
 
-  event, ok := emitter.events[e]
+  emitter := NewEmitter().
+    AddListener(event, func() {})
 
-  if !ok {
-    t.Errorf("Expected AddListener to establish event %s.\n", e)
-  } else if 1 != len((*event).listeners) {
-    t.Errorf("Expected AddListener to add only 1 handler to registered event %s.\n", e)
+  if 1 != len(emitter.events[event]) {
+    t.Error("Failed to add listener to the emitter.")
   }
 }
 
 func TestEmit(t *testing.T) {
+  event := "test"
   flag := true
-  fn := func(args ...interface{}) {
-    flag = false
-  }
 
-  emitter.AddListener(e, fn).
-    Emit(e, nil)
+  NewEmitter().
+    AddListener(event, func() { flag = !flag }).
+    Emit("test")
 
   if flag {
-    t.Errorf("Emit failed to call listener function.")
+    t.Error("Emit failed to call listener to unset flag.")
   }
 }
 
 func TestRemoveListener(t *testing.T) {
-  flag := false
-  pre := len((*emitter.events[e]).listeners)
-  fn := func(args ...interface{}) {
-    flag = true
-  }
+  event := "test"
+  listener := func() {}
 
-  emitter.AddListener(e, fn).
-    RemoveListener(e, fn).
-    Emit(e, nil)
+  emitter := NewEmitter().
+    AddListener(event, listener).
+    RemoveListener(event, listener)
 
-  if flag {
-    t.Errorf("Unremoved listener modified flag variable, set to %v.\n", flag)
-  } else if post := len((*emitter.events[e]).listeners); pre != post {
-    t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
+  if 0 != len(emitter.events[event]) {
+    t.Error("Failed to remove listener from the emitter.")
   }
 }
 
 func TestOnce(t *testing.T) {
-  count := 0
-  pre := len((*emitter.events[e]).listeners)
-  fn := func(args ...interface{}) {
-    count++
-  }
+  event := "test"
+  flag := true
 
-  emitter.Once(e, fn).
-    Emit(e, nil).
-    Emit(e, nil)
-
-  if count != 1 {
-    t.Errorf("Listener was called %d times, expected to be called only once.\n", count)
-  } else if post := len((*emitter.events[e]).listeners); pre != post {
-    t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
-  }
-}
-
-func TestSetMaxListeners(t *testing.T) {
-  flag := false
-  pre := len((*emitter.events[e]).listeners)
-  fn := func(args ...interface{}) {
-    flag = true
-  }
-
-  emitter.SetMaxListeners(1).
-    AddListener(e, fn).
-    Emit(e, nil)
+  NewEmitter().
+    Once(event, func() { flag = !flag }).
+    Emit("test").
+    Emit("test")
 
   if flag {
-    t.Errorf("Listner was successfully added after lowering maxListeners.\n")
-  } else if post := len((*emitter.events[e]).listeners); pre != post {
-    t.Errorf("Expected %d event handler(s), found %d.\n", pre, post)
+    t.Error("Once called listener multiple times reseting the flag.")
   }
-  emitter.SetMaxListeners(DEFAULT_MAX_LISTENERS)
 }
