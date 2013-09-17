@@ -20,6 +20,7 @@ var (
 type Emitter struct {
   events       map[interface{}][]reflect.Value
   maxListeners int
+  mutex        *sync.Mutex
 }
 
 // AddListener appends the listener argument to the event arguments slice
@@ -28,6 +29,9 @@ type Emitter struct {
 // If the relect Value of the listener does not have a Kind of Func then
 // AddListener panics.
 func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   fn := reflect.ValueOf(listener)
 
   if reflect.Func != fn.Kind() {
@@ -53,6 +57,9 @@ func (emitter *Emitter) On(event, listener interface{}) *Emitter {
 // in the Emitter's events map.  If the reflect Value of the listener does not
 // have a Kind of Func then RemoveListener panics.
 func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   fn := reflect.ValueOf(listener)
 
   if reflect.Func != fn.Kind() {
@@ -91,6 +98,8 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
   var run func(...interface{})
 
   run = func(arguments ...interface{}) {
+    defer emitter.RemoveListener(event, run)
+
     var values []reflect.Value
 
     for i := 0; i < len(arguments); i++ {
@@ -98,7 +107,6 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
     }
 
     fn.Call(values)
-    emitter.RemoveListener(event, run)
   }
 
   emitter.AddListener(event, run)
@@ -115,11 +123,20 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
     ok        bool
   )
 
+  // Lock the mutex when reading from the Emitter's
+  // events map.
+  emitter.mutex.Lock()
+
   if listeners, ok = emitter.events[event]; !ok {
     // If the Emitter does not include the event in its
     // event map, it has no listeners to Call yet.
     return emitter
   }
+
+  // Unlock the mutex immediately following the read
+  // instead of deferring so that listeners registered
+  // with Once can aquire the mutex for removal.
+  emitter.mutex.Unlock()
 
   var (
     wg     sync.WaitGroup
@@ -149,6 +166,9 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 // event can have a maximum number of 10 listeners which is
 // useful for finding memory leaks.
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
+  emitter.mutex.Lock()
+  defer emitter.mutex.Unlock()
+
   emitter.maxListeners = max
   return emitter
 }
@@ -158,6 +178,7 @@ func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
 // constant and initializing its events map.
 func NewEmitter() (emitter *Emitter) {
   emitter = new(Emitter)
+  emitter.mutex = new(sync.Mutex)
   emitter.events = make(map[interface{}][]reflect.Value)
   emitter.maxListeners = DefaultMaxListeners
   return
