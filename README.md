@@ -19,39 +19,36 @@ If you've ever used an event emitter before, using Emission should be very famil
 package main
 
 import (
+  "fmt"
+)
+
+import (
   "github.com/chuckpreslar/emission"
 )
 
 func main() {
   emitter := emission.NewEmitter()
 
-  a := func(args ...interface{}) {
-    println("Hello from `a`!", args)
+  hello := func(to string) {
+    fmt.Printf("Hello %s!", to)
   }
-
-  b := func(args ...interface{}) {
-    println("Hello from `b`!", args)
+  
+  count := func(count int) {
+    for i := 0; i < count; i++ {
+      fmt.Println(i)
+    }
   }
-
-  emitter.On("test", a).
-    On("test", b).
-    On("hello", func(args ...interface{}) {
-      for _, value := range args {
-        fmt.Printf("Hello %v!\n", value)
-      }
-    })
-
-  emitter.Emit("test", 1, 2, 3, 4).
-    Emit("hello", "world")
-
-  /**
-   * Outputs:
-   * ----
-   * Hello from `a`! [1 2 3 4]
-   * Hello from `b`! [1 2 3 4]
-   * Hello world!
-   */
-
+  
+  emitter.On("hello", hello).
+    On("count", count).
+    Emit("hello", "world").
+    Emit("count", 5)
+    
+  // Hello world!
+  // 1
+  // 2
+  // 3
+  // 4
 }
 
 ```
