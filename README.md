@@ -30,7 +30,7 @@ func main() {
   emitter := emission.NewEmitter()
 
   hello := func(to string) {
-    fmt.Printf("Hello %s!", to)
+    fmt.Printf("Hello %s!\n", to)
   }
   
   count := func(count int) {
@@ -45,6 +45,7 @@ func main() {
     Emit("count", 5)
     
   // Hello world!
+  // 0
   // 1
   // 2
   // 3
