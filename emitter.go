@@ -9,25 +9,27 @@ import (
   "sync"
 )
 
-const (
-  DefaultMaxListeners = 10
-)
+// Default number of maximum listeners for an event.
+const DefaultMaxListeners = 10
 
-var (
-  ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
-)
+// Error presented when an invalid argument is provided as a listener function
+var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
+
+type RecoveryListener func(interface{}, interface{}, error)
 
 type Emitter struct {
-  events       map[interface{}][]reflect.Value
-  maxListeners int
-  mutex        *sync.Mutex
+  events       map[interface{}][]reflect.Value // Map of event to a slice of listener function's reflect Values.
+  recoverer    RecoveryListener                // Optional RecoveryListener to call when a panic occurs.
+  maxListeners int                             // Maximum listeners for debugging potential memory leaks.
+  mutex        *sync.Mutex                     // Mutex to prevent race conditions within the Emitter.
 }
 
 // AddListener appends the listener argument to the event arguments slice
 // in the Emitter's events map. If the number of listeners for an event
 // is greater than the Emitter's maximum listeners then a warning is printed.
 // If the relect Value of the listener does not have a Kind of Func then
-// AddListener panics.
+// AddListener panics. If a RecoveryListener has been set then it is called
+// recovering from the panic.
 func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
@@ -35,7 +37,11 @@ func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
   fn := reflect.ValueOf(listener)
 
   if reflect.Func != fn.Kind() {
-    panic(ErrNoneFunction)
+    if nil == emitter.recoverer {
+      panic(ErrNoneFunction)
+    } else {
+      emitter.recoverer(event, listener, ErrNoneFunction)
+    }
   }
 
   if emitter.maxListeners != -1 && emitter.maxListeners < len(emitter.events[event])+1 {
@@ -55,7 +61,8 @@ func (emitter *Emitter) On(event, listener interface{}) *Emitter {
 
 // RemoveListener removes the listener argument from the event arguments slice
 // in the Emitter's events map.  If the reflect Value of the listener does not
-// have a Kind of Func then RemoveListener panics.
+// have a Kind of Func then RemoveListener panics. If a RecoveryListener has
+// been set then it is called after recovering from the panic.
 func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
   emitter.mutex.Lock()
   defer emitter.mutex.Unlock()
@@ -63,7 +70,11 @@ func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
   fn := reflect.ValueOf(listener)
 
   if reflect.Func != fn.Kind() {
-    panic(ErrNoneFunction)
+    if nil == emitter.recoverer {
+      panic(ErrNoneFunction)
+    } else {
+      emitter.recoverer(event, listener, ErrNoneFunction)
+    }
   }
 
   if events, ok := emitter.events[event]; ok {
@@ -87,12 +98,17 @@ func (emitter *Emitter) Off(event, listener interface{}) *Emitter {
 // Once generates a new function which invokes the supplied listener
 // only once before removing itself from the event's listener slice
 // in the Emitter's events map. If the reflect Value of the listener
-// does not have a Kind of Func then Once panics.
+// does not have a Kind of Func then Once panics. If a RecoveryListener
+// has been set then it is called after recovering from the panic.
 func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
   fn := reflect.ValueOf(listener)
 
   if reflect.Func != fn.Kind() {
-    panic(ErrNoneFunction)
+    if nil == emitter.recoverer {
+      panic(ErrNoneFunction)
+    } else {
+      emitter.recoverer(event, listener, ErrNoneFunction)
+    }
   }
 
   var run func(...interface{})
@@ -117,6 +133,8 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
 // in the Emitter's events map with the supplied arguments. Each listener
 // is called within its own go routine. The reflect package will panic if
 // the agruments supplied do not align the parameters of a listener function.
+// If a RecoveryListener has been set then it is called after recovering from
+// the panic.
 func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitter {
   var (
     listeners []reflect.Value
@@ -151,12 +169,34 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 
   for _, fn := range listeners {
     go func(fn reflect.Value) {
+      // Recover from potential panics, supplying them to a
+      // RecoveryListener if one has been set, else allowing
+      // the panic to occur.
+      defer func() {
+        if r := recover(); nil != r {
+          if nil != emitter.recoverer {
+            err := errors.New(fmt.Sprintf("%v", r))
+            emitter.recoverer(event, fn.Interface(), err)
+          } else {
+            panic(r)
+          }
+        }
+      }()
+
       defer wg.Done()
+
       fn.Call(values)
     }(fn)
   }
 
   wg.Wait()
+  return emitter
+}
+
+// RecoverWith sets the listener to call when a panic occurs, recovering from
+// panics and attempting to keep the application from crashing.
+func (emitter *Emitter) RecoverWith(listener RecoveryListener) *Emitter {
+  emitter.recoverer = listener
   return emitter
 }
 

@@ -21,7 +21,7 @@ func TestEmit(t *testing.T) {
 
   NewEmitter().
     AddListener(event, func() { flag = !flag }).
-    Emit("test")
+    Emit(event)
 
   if flag {
     t.Error("Emit failed to call listener to unset flag.")
@@ -47,10 +47,24 @@ func TestOnce(t *testing.T) {
 
   NewEmitter().
     Once(event, func() { flag = !flag }).
-    Emit("test").
-    Emit("test")
+    Emit(event).
+    Emit(event)
 
   if flag {
     t.Error("Once called listener multiple times reseting the flag.")
+  }
+}
+
+func TestRecoveryWith(t *testing.T) {
+  event := "test"
+  flag := true
+
+  NewEmitter().
+    AddListener(event, func() { panic(event) }).
+    RecoverWith(func(event, listener interface{}, err error) { flag = !flag }).
+    Emit(event)
+
+  if flag {
+    t.Error("Listener supplied to RecoverWith was not called to unset flag on panic.")
   }
 }
