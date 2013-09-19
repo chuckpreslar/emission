@@ -172,16 +172,14 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
       // Recover from potential panics, supplying them to a
       // RecoveryListener if one has been set, else allowing
       // the panic to occur.
-      defer func() {
-        if r := recover(); nil != r {
-          if nil != emitter.recoverer {
+      if nil != emitter.recoverer {
+        defer func() {
+          if r := recover(); nil != r {
             err := errors.New(fmt.Sprintf("%v", r))
             emitter.recoverer(event, fn.Interface(), err)
-          } else {
-            panic(r)
           }
-        }
-      }()
+        }()
+      }
 
       defer wg.Done()
 
