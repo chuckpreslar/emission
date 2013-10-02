@@ -18,10 +18,14 @@ var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
 type RecoveryListener func(interface{}, interface{}, error)
 
 type Emitter struct {
-  events       map[interface{}][]reflect.Value // Map of event to a slice of listener function's reflect Values.
-  recoverer    RecoveryListener                // Optional RecoveryListener to call when a panic occurs.
-  maxListeners int                             // Maximum listeners for debugging potential memory leaks.
-  mutex        *sync.Mutex                     // Mutex to prevent race conditions within the Emitter.
+  // Map of event to a slice of listener function's reflect Values.
+  events map[interface{}][]reflect.Value
+  // Optional RecoveryListener to call when a panic occurs.
+  recoverer RecoveryListener
+  // Maximum listeners for debugging potential memory leaks.
+  maxListeners int
+  // Mutex to prevent race conditions within the Emitter.
+  mutex *sync.Mutex
 }
 
 // AddListener appends the listener argument to the event arguments slice
