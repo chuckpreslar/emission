@@ -43,16 +43,13 @@ func main() {
     On("count", count).
     Emit("hello", "world").
     Emit("count", 5)
-    
-  // Hello world!
-  // 0
-  // 1
-  // 2
-  // 3
-  // 4
 }
 
 ```
+
+## About
+
+The `emission` package provides an event emitter making use of the reflect packages ability to call functions.  Using the `Call` method on the value of a function allows passing any type of function to the event emiiter, regardless of the functions parameters.
 
 ## Documentation
 
