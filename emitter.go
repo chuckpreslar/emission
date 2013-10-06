@@ -18,14 +18,14 @@ var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
 type RecoveryListener func(interface{}, interface{}, error)
 
 type Emitter struct {
+	// Mutex to prevent race conditions within the Emitter.
+	*sync.Mutex
 	// Map of event to a slice of listener function's reflect Values.
 	events map[interface{}][]reflect.Value
 	// Optional RecoveryListener to call when a panic occurs.
 	recoverer RecoveryListener
 	// Maximum listeners for debugging potential memory leaks.
 	maxListeners int
-	// Mutex to prevent race conditions within the Emitter.
-	mutex *sync.Mutex
 }
 
 // AddListener appends the listener argument to the event arguments slice
@@ -35,8 +35,8 @@ type Emitter struct {
 // AddListener panics. If a RecoveryListener has been set then it is called
 // recovering from the panic.
 func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
-	emitter.mutex.Lock()
-	defer emitter.mutex.Unlock()
+	emitter.Lock()
+	defer emitter.Unlock()
 
 	fn := reflect.ValueOf(listener)
 
@@ -68,8 +68,8 @@ func (emitter *Emitter) On(event, listener interface{}) *Emitter {
 // have a Kind of Func then RemoveListener panics. If a RecoveryListener has
 // been set then it is called after recovering from the panic.
 func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
-	emitter.mutex.Lock()
-	defer emitter.mutex.Unlock()
+	emitter.Lock()
+	defer emitter.Unlock()
 
 	fn := reflect.ValueOf(listener)
 
@@ -147,7 +147,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 
 	// Lock the mutex when reading from the Emitter's
 	// events map.
-	emitter.mutex.Lock()
+	emitter.Lock()
 
 	if listeners, ok = emitter.events[event]; !ok {
 		// If the Emitter does not include the event in its
@@ -158,7 +158,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 	// Unlock the mutex immediately following the read
 	// instead of deferring so that listeners registered
 	// with Once can aquire the mutex for removal.
-	emitter.mutex.Unlock()
+	emitter.Unlock()
 
 	var (
 		wg     sync.WaitGroup
@@ -208,8 +208,8 @@ func (emitter *Emitter) RecoverWith(listener RecoveryListener) *Emitter {
 // event can have a maximum number of 10 listeners which is
 // useful for finding memory leaks.
 func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
-	emitter.mutex.Lock()
-	defer emitter.mutex.Unlock()
+	emitter.Lock()
+	defer emitter.Unlock()
 
 	emitter.maxListeners = max
 	return emitter
@@ -220,7 +220,7 @@ func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
 // constant and initializing its events map.
 func NewEmitter() (emitter *Emitter) {
 	emitter = new(Emitter)
-	emitter.mutex = new(sync.Mutex)
+	emitter.Mutex = new(sync.Mutex)
 	emitter.events = make(map[interface{}][]reflect.Value)
 	emitter.maxListeners = DefaultMaxListeners
 	return
