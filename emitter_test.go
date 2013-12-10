@@ -28,6 +28,16 @@ func TestEmit(t *testing.T) {
 	}
 }
 
+func TestEmitWithoutListener(t *testing.T) {
+	event := "test"
+
+	emitter := NewEmitter()
+
+	// A fatal error will be raised if we meet the deadlock
+	emitter.Emit(event).
+		Emit(event)
+}
+
 func TestRemoveListener(t *testing.T) {
 	event := "test"
 	listener := func() {}
