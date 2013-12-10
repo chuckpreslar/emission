@@ -152,6 +152,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 	if listeners, ok = emitter.events[event]; !ok {
 		// If the Emitter does not include the event in its
 		// event map, it has no listeners to Call yet.
+		emitter.Unlock()
 		return emitter
 	}
 
