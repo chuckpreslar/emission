@@ -28,6 +28,24 @@ func TestEmit(t *testing.T) {
 	}
 }
 
+func TestEmitWithMultipleListeners(t *testing.T) {
+	event := "test"
+	invoked := 0
+
+	NewEmitter().
+		AddListener(event, func() {
+			invoked = invoked + 1
+		}).
+		AddListener(event, func() {
+			invoked = invoked + 1
+		}).
+		Emit(event)
+
+	if invoked != 2{
+		t.Error("Emit failed to call all listeners.")
+	}
+}
+
 func TestRemoveListener(t *testing.T) {
 	event := "test"
 	listener := func() {}
