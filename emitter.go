@@ -26,6 +26,8 @@ type Emitter struct {
 	recoverer RecoveryListener
 	// Maximum listeners for debugging potential memory leaks.
 	maxListeners int
+	// Map used to remove Listeners wrapped in a Once func
+	onces map[reflect.Value]reflect.Value
 }
 
 // AddListener appends the listener argument to the event arguments slice
@@ -82,6 +84,10 @@ func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
 	}
 
 	if events, ok := emitter.events[event]; ok {
+		if _, ok = emitter.onces[fn]; ok {
+			fn = emitter.onces[fn]
+		}
+
 		for i, listener := range events {
 			if fn == listener {
 				// Do not break here to ensure the listener has not been
@@ -129,6 +135,7 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
 		fn.Call(values)
 	}
 
+	emitter.onces[fn] = reflect.ValueOf(run)
 	emitter.AddListener(event, run)
 	return emitter
 }
@@ -224,5 +231,6 @@ func NewEmitter() (emitter *Emitter) {
 	emitter.Mutex = new(sync.Mutex)
 	emitter.events = make(map[interface{}][]reflect.Value)
 	emitter.maxListeners = DefaultMaxListeners
+	emitter.onces = make(map[reflect.Value]reflect.Value)
 	return
 }

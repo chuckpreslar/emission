@@ -86,3 +86,18 @@ func TestRecoveryWith(t *testing.T) {
 		t.Error("Listener supplied to RecoverWith was not called to unset flag on panic.")
 	}
 }
+
+func TestRemoveOnce(t *testing.T) {
+	event := "test"
+	flag := false
+	fn := func() { flag = !flag }
+
+	NewEmitter().
+		Once(event, fn).
+		RemoveListener(event, fn).
+		Emit(event)
+
+	if flag {
+		t.Error("Failed to remove Listener for Once")
+	}
+}
