@@ -168,14 +168,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 	// with Once can aquire the mutex for removal.
 	emitter.Unlock()
 
-	var (
-		wg     sync.WaitGroup
-		values []reflect.Value
-	)
-
-	for i := 0; i < len(arguments); i++ {
-		values = append(values, reflect.ValueOf(arguments[i]))
-	}
+	var wg sync.WaitGroup
 
 	wg.Add(len(listeners))
 
@@ -191,6 +184,16 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 						emitter.recoverer(event, fn.Interface(), err)
 					}
 				}()
+			}
+
+			var values []reflect.Value
+
+			for i := 0; i < len(arguments); i++ {
+				if arguments[i] == nil {
+					values = append(values, reflect.New(fn.Type().In(i)).Elem())
+				} else {
+					values = append(values, reflect.ValueOf(arguments[i]))
+				}
 			}
 
 			defer wg.Done()
