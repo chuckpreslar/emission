@@ -28,20 +28,33 @@ func TestEmit(t *testing.T) {
 	}
 }
 
+func TestEmitSync(t *testing.T) {
+	event := "test"
+	flag := true
+
+	NewEmitter().
+		AddListener(event, func() { flag = !flag }).
+		EmitSync(event)
+
+	if flag {
+		t.Error("EmitSync failed to call listener to unset flag.")
+	}
+}
+
 func TestEmitWithMultipleListeners(t *testing.T) {
 	event := "test"
 	invoked := 0
 
 	NewEmitter().
 		AddListener(event, func() {
-			invoked = invoked + 1
-		}).
+		invoked = invoked + 1
+	}).
 		AddListener(event, func() {
-			invoked = invoked + 1
-		}).
+		invoked = invoked + 1
+	}).
 		Emit(event)
 
-	if invoked != 2{
+	if invoked != 2 {
 		t.Error("Emit failed to call all listeners.")
 	}
 }

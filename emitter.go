@@ -208,6 +208,63 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 	return emitter
 }
 
+// EmitSync attempts to use the reflect package to Call each listener stored
+// in the Emitter's events map with the supplied arguments. Each listener
+// is called synchronously. The reflect package will panic if
+// the agruments supplied do not align the parameters of a listener function.
+// If a RecoveryListener has been set then it is called after recovering from
+// the panic.
+func (emitter *Emitter) EmitSync(event interface{}, arguments ...interface{}) *Emitter {
+	var (
+		listeners []reflect.Value
+		ok        bool
+	)
+
+	// Lock the mutex when reading from the Emitter's
+	// events map.
+	emitter.Lock()
+
+	if listeners, ok = emitter.events[event]; !ok {
+		// If the Emitter does not include the event in its
+		// event map, it has no listeners to Call yet.
+		emitter.Unlock()
+		return emitter
+	}
+
+	// Unlock the mutex immediately following the read
+	// instead of deferring so that listeners registered
+	// with Once can aquire the mutex for removal.
+	emitter.Unlock()
+
+	for _, fn := range listeners {
+		// Recover from potential panics, supplying them to a
+		// RecoveryListener if one has been set, else allowing
+		// the panic to occur.
+		if nil != emitter.recoverer {
+			defer func() {
+				if r := recover(); nil != r {
+					err := fmt.Errorf("%v", r)
+					emitter.recoverer(event, fn.Interface(), err)
+				}
+			}()
+		}
+
+		var values []reflect.Value
+
+		for i := 0; i < len(arguments); i++ {
+			if arguments[i] == nil {
+				values = append(values, reflect.New(fn.Type().In(i)).Elem())
+			} else {
+				values = append(values, reflect.ValueOf(arguments[i]))
+			}
+		}
+
+		fn.Call(values)
+	}
+
+	return emitter
+}
+
 // RecoverWith sets the listener to call when a panic occurs, recovering from
 // panics and attempting to keep the application from crashing.
 func (emitter *Emitter) RecoverWith(listener RecoveryListener) *Emitter {
