@@ -15,8 +15,10 @@ const DefaultMaxListeners = 10
 // Error presented when an invalid argument is provided as a listener function
 var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
 
+// RecoveryListener ...
 type RecoveryListener func(interface{}, interface{}, error)
 
+// Emitter ...
 type Emitter struct {
 	// Mutex to prevent race conditions within the Emitter.
 	*sync.Mutex
@@ -180,7 +182,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 			if nil != emitter.recoverer {
 				defer func() {
 					if r := recover(); nil != r {
-						err := errors.New(fmt.Sprintf("%v", r))
+						err := fmt.Errorf("%v", r)
 						emitter.recoverer(event, fn.Interface(), err)
 					}
 				}()
