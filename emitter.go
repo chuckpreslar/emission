@@ -137,7 +137,11 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
 		fn.Call(values)
 	}
 
+	// Lock before changing onces
+	emitter.Lock()
 	emitter.onces[fn] = reflect.ValueOf(run)
+	emitter.Unlock()
+
 	emitter.AddListener(event, run)
 	return emitter
 }
