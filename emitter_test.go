@@ -47,11 +47,11 @@ func TestEmitWithMultipleListeners(t *testing.T) {
 
 	NewEmitter().
 		AddListener(event, func() {
-		invoked = invoked + 1
-	}).
+			invoked = invoked + 1
+		}).
 		AddListener(event, func() {
-		invoked = invoked + 1
-	}).
+			invoked = invoked + 1
+		}).
 		Emit(event)
 
 	if invoked != 2 {
@@ -112,5 +112,20 @@ func TestRemoveOnce(t *testing.T) {
 
 	if flag {
 		t.Error("Failed to remove Listener for Once")
+	}
+}
+
+func TestCountListener(t *testing.T) {
+	event := "test"
+
+	emitter := NewEmitter().
+		AddListener(event, func() {})
+
+	if 1 != emitter.GetListenerCount(event) {
+		t.Error("Failed to get listener count from emitter.")
+	}
+
+	if 0 != emitter.GetListenerCount("fake") {
+		t.Error("Failed to get listener count from emitter.")
 	}
 }

@@ -289,6 +289,16 @@ func (emitter *Emitter) SetMaxListeners(max int) *Emitter {
 	return emitter
 }
 
+// GetListenerCount gets count of listeners for a given event.
+func (emitter *Emitter) GetListenerCount(event interface{}) (count int) {
+	emitter.Lock()
+	if listeners, ok := emitter.events[event]; ok {
+		count = len(listeners)
+	}
+	emitter.Unlock()
+	return
+}
+
 // NewEmitter returns a new Emitter object, defaulting the
 // number of maximum listeners per event to the DefaultMaxListeners
 // constant and initializing its events map.
