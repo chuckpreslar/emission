@@ -143,5 +143,12 @@ func TestRemoveStructMethod(t *testing.T) {
 	if 0 != emitter.GetListenerCount(event) {
 		t.Error("Failed to remove listener from emitter.")
 	}
+}
 
+func TestRemoveDoubleListener(t *testing.T) {
+	event := "test"
+
+	fn1 := func() {}
+
+	NewEmitter().On(event, fn1).On(event, fn1).RemoveListener(event, fn1)
 }
