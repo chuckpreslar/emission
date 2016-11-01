@@ -91,7 +91,7 @@ func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
 		}
 
 		for i, listener := range events {
-			if fn == listener {
+			if fn.Pointer() == listener.Pointer() {
 				// Do not break here to ensure the listener has not been
 				// added more than once.
 				emitter.events[event] = append(emitter.events[event][:i], emitter.events[event][i+1:]...)

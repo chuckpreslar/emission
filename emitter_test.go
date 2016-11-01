@@ -129,3 +129,19 @@ func TestCountListener(t *testing.T) {
 		t.Error("Failed to get listener count from emitter.")
 	}
 }
+
+type SomeType struct{}
+
+func (*SomeType) Receiver(evt string) {}
+
+func TestRemoveStructMethod(t *testing.T) {
+	event := "test"
+	listener := &SomeType{}
+	emitter := NewEmitter().AddListener(event, listener.Receiver)
+
+	emitter.RemoveListener(event, listener.Receiver)
+	if 0 != emitter.GetListenerCount(event) {
+		t.Error("Failed to remove listener from emitter.")
+	}
+
+}
