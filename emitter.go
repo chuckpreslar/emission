@@ -90,13 +90,15 @@ func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
 			fn = emitter.onces[fn]
 		}
 
-		for i, listener := range events {
-			if fn == listener {
-				// Do not break here to ensure the listener has not been
-				// added more than once.
-				emitter.events[event] = append(emitter.events[event][:i], emitter.events[event][i+1:]...)
+		newEvents := []reflect.Value{}
+
+		for _, listener := range events {
+			if fn.Pointer() != listener.Pointer() {
+				newEvents = append(newEvents, listener)
 			}
 		}
+
+		emitter.events[event] = newEvents
 	}
 
 	return emitter
