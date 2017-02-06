@@ -182,6 +182,8 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 
 	for _, fn := range listeners {
 		go func(fn reflect.Value) {
+			defer wg.Done()
+
 			// Recover from potential panics, supplying them to a
 			// RecoveryListener if one has been set, else allowing
 			// the panic to occur.
@@ -203,8 +205,6 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 					values = append(values, reflect.ValueOf(arguments[i]))
 				}
 			}
-
-			defer wg.Done()
 
 			fn.Call(values)
 		}(fn)
