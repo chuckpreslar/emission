@@ -148,6 +148,67 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
 	return emitter
 }
 
+// EmitAsync attempts to use the reflect package to Call each listener stored
+// in the Emitter's events map with the supplied arguments. Each listener
+// is called within its own go routine. The reflect package will panic if
+// the agruments supplied do not align the parameters of a listener function.
+// If a RecoveryListener has been set then it is called after recovering from
+// the panic.
+// Unlike Emit, EmitAsync will return immediately.
+func (emitter *Emitter) EmitAsync(event interface{}, arguments ...interface{}) *Emitter {
+	var (
+		listeners []reflect.Value
+		ok        bool
+	)
+
+	// Lock the mutex when reading from the Emitter's
+	// events map.
+	emitter.Lock()
+
+	if listeners, ok = emitter.events[event]; !ok {
+		// If the Emitter does not include the event in its
+		// event map, it has no listeners to Call yet.
+		emitter.Unlock()
+		return emitter
+	}
+
+	// Unlock the mutex immediately following the read
+	// instead of deferring so that listeners registered
+	// with Once can aquire the mutex for removal.
+	emitter.Unlock()
+
+	for _, fn := range listeners {
+		go func(fn reflect.Value) {
+
+			// Recover from potential panics, supplying them to a
+			// RecoveryListener if one has been set, else allowing
+			// the panic to occur.
+			if nil != emitter.recoverer {
+				defer func() {
+					if r := recover(); nil != r {
+						err := fmt.Errorf("%v", r)
+						emitter.recoverer(event, fn.Interface(), err)
+					}
+				}()
+			}
+
+			var values []reflect.Value
+
+			for i := 0; i < len(arguments); i++ {
+				if arguments[i] == nil {
+					values = append(values, reflect.New(fn.Type().In(i)).Elem())
+				} else {
+					values = append(values, reflect.ValueOf(arguments[i]))
+				}
+			}
+
+			fn.Call(values)
+		}(fn)
+	}
+
+	return emitter
+}
+
 // Emit attempts to use the reflect package to Call each listener stored
 // in the Emitter's events map with the supplied arguments. Each listener
 // is called within its own go routine. The reflect package will panic if
