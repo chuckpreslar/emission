@@ -2,6 +2,7 @@ package emission
 
 import (
 	"testing"
+	"time"
 )
 
 func TestAddListener(t *testing.T) {
@@ -25,6 +26,25 @@ func TestEmit(t *testing.T) {
 
 	if flag {
 		t.Error("Emit failed to call listener to unset flag.")
+	}
+}
+
+func TestEmitAsync(t *testing.T) {
+	event := "test"
+
+	ch := make(chan bool)
+
+	NewEmitter().
+		AddListener(event, func() { ch <- true }).
+		EmitAsync(event)
+
+	timeout := time.NewTimer(2 * time.Second)
+
+	select {
+	case <-timeout.C:
+		t.Error("EmitAsync failed to call listener")
+	case <-ch:
+		// everything is fine
 	}
 }
 
