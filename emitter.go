@@ -18,27 +18,40 @@ var ErrNoneFunction = errors.New("Kind of Value for listener is not Func.")
 // RecoveryListener ...
 type RecoveryListener func(interface{}, interface{}, error)
 
+// ListenerHandle is an opaque reference to a previously added listener. You need the handle to remove the listener.
+type ListenerHandle uint32
+
+type listenerRecord struct {
+	fn			reflect.Value
+	handle		ListenerHandle
+	isOnce		bool
+}
+
 // Emitter ...
 type Emitter struct {
 	// Mutex to prevent race conditions within the Emitter.
 	*sync.Mutex
+	// Unique counter to allocate handles
+	nextHandle ListenerHandle
 	// Map of event to a slice of listener function's reflect Values.
-	events map[interface{}][]reflect.Value
+	events map[interface{}][]listenerRecord
 	// Optional RecoveryListener to call when a panic occurs.
 	recoverer RecoveryListener
 	// Maximum listeners for debugging potential memory leaks.
 	maxListeners int
-	// Map used to remove Listeners wrapped in a Once func
-	onces map[reflect.Value]reflect.Value
 }
 
 // AddListener appends the listener argument to the event arguments slice
 // in the Emitter's events map. If the number of listeners for an event
 // is greater than the Emitter's maximum listeners then a warning is printed.
-// If the relect Value of the listener does not have a Kind of Func then
+// If the reflect Value of the listener does not have a Kind of Func then
 // AddListener panics. If a RecoveryListener has been set then it is called
 // recovering from the panic.
-func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
+func (emitter *Emitter) AddListener(event, listener interface{}) ListenerHandle {
+	return emitter.addListener(event,listener,false)
+}
+
+func (emitter *Emitter) addListener(event, listener interface{}, isOnce bool) ListenerHandle {
 	emitter.Lock()
 	defer emitter.Unlock()
 
@@ -57,13 +70,16 @@ func (emitter *Emitter) AddListener(event, listener interface{}) *Emitter {
 			"number of listeners of %d.\n", event, emitter.maxListeners)
 	}
 
-	emitter.events[event] = append(emitter.events[event], fn)
+	emitter.nextHandle = emitter.nextHandle + 1
+	handle := emitter.nextHandle
 
-	return emitter
+	emitter.events[event] = append(emitter.events[event], listenerRecord{fn,handle, isOnce})
+
+	return handle
 }
 
 // On is an alias for AddListener.
-func (emitter *Emitter) On(event, listener interface{}) *Emitter {
+func (emitter *Emitter) On(event, listener interface{}) ListenerHandle {
 	return emitter.AddListener(event, listener)
 }
 
@@ -71,42 +87,31 @@ func (emitter *Emitter) On(event, listener interface{}) *Emitter {
 // in the Emitter's events map.  If the reflect Value of the listener does not
 // have a Kind of Func then RemoveListener panics. If a RecoveryListener has
 // been set then it is called after recovering from the panic.
-func (emitter *Emitter) RemoveListener(event, listener interface{}) *Emitter {
+func (emitter *Emitter) RemoveListener(event interface{}, listenerHandle ListenerHandle) {
 	emitter.Lock()
 	defer emitter.Unlock()
 
-	fn := reflect.ValueOf(listener)
-
-	if reflect.Func != fn.Kind() {
-		if nil == emitter.recoverer {
-			panic(ErrNoneFunction)
-		} else {
-			emitter.recoverer(event, listener, ErrNoneFunction)
-		}
-	}
-
 	if events, ok := emitter.events[event]; ok {
-		if _, ok = emitter.onces[fn]; ok {
-			fn = emitter.onces[fn]
+		l := len(events)
+		if l == 0 {
+			return
 		}
 
-		newEvents := []reflect.Value{}
+		newEvents := make([]listenerRecord,0,l - 1)
 
-		for _, listener := range events {
-			if fn.Pointer() != listener.Pointer() {
-				newEvents = append(newEvents, listener)
+		for _, listenerRec := range events {
+			if listenerHandle != listenerRec.handle {
+				newEvents = append(newEvents, listenerRec)
 			}
 		}
 
 		emitter.events[event] = newEvents
 	}
-
-	return emitter
 }
 
 // Off is an alias for RemoveListener.
-func (emitter *Emitter) Off(event, listener interface{}) *Emitter {
-	return emitter.RemoveListener(event, listener)
+func (emitter *Emitter) Off(event, listener ListenerHandle) {
+	emitter.RemoveListener(event, listener)
 }
 
 // Once generates a new function which invokes the supplied listener
@@ -114,38 +119,8 @@ func (emitter *Emitter) Off(event, listener interface{}) *Emitter {
 // in the Emitter's events map. If the reflect Value of the listener
 // does not have a Kind of Func then Once panics. If a RecoveryListener
 // has been set then it is called after recovering from the panic.
-func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
-	fn := reflect.ValueOf(listener)
-
-	if reflect.Func != fn.Kind() {
-		if nil == emitter.recoverer {
-			panic(ErrNoneFunction)
-		} else {
-			emitter.recoverer(event, listener, ErrNoneFunction)
-		}
-	}
-
-	var run func(...interface{})
-
-	run = func(arguments ...interface{}) {
-		defer emitter.RemoveListener(event, run)
-
-		var values []reflect.Value
-
-		for i := 0; i < len(arguments); i++ {
-			values = append(values, reflect.ValueOf(arguments[i]))
-		}
-
-		fn.Call(values)
-	}
-
-	// Lock before changing onces
-	emitter.Lock()
-	emitter.onces[fn] = reflect.ValueOf(run)
-	emitter.Unlock()
-
-	emitter.AddListener(event, run)
-	return emitter
+func (emitter *Emitter) Once(event, listener interface{}) ListenerHandle {
+	return emitter.addListener(event,listener,true)
 }
 
 // Emit attempts to use the reflect package to Call each listener stored
@@ -156,7 +131,7 @@ func (emitter *Emitter) Once(event, listener interface{}) *Emitter {
 // the panic.
 func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitter {
 	var (
-		listeners []reflect.Value
+		listeners []listenerRecord
 		ok        bool
 	)
 
@@ -180,9 +155,11 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 
 	wg.Add(len(listeners))
 
-	for _, fn := range listeners {
-		go func(fn reflect.Value) {
+	for _, listenerRec := range listeners {
+		go func(listenerRec listenerRecord) {
 			defer wg.Done()
+
+			fn := listenerRec.fn
 
 			// Recover from potential panics, supplying them to a
 			// RecoveryListener if one has been set, else allowing
@@ -206,8 +183,12 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 				}
 			}
 
+			if listenerRec.isOnce {
+				emitter.RemoveListener(event,listenerRec.handle)
+			}
+
 			fn.Call(values)
-		}(fn)
+		}(listenerRec)
 	}
 
 	wg.Wait()
@@ -222,7 +203,7 @@ func (emitter *Emitter) Emit(event interface{}, arguments ...interface{}) *Emitt
 // the panic.
 func (emitter *Emitter) EmitSync(event interface{}, arguments ...interface{}) *Emitter {
 	var (
-		listeners []reflect.Value
+		listeners []listenerRecord
 		ok        bool
 	)
 
@@ -242,7 +223,9 @@ func (emitter *Emitter) EmitSync(event interface{}, arguments ...interface{}) *E
 	// with Once can aquire the mutex for removal.
 	emitter.Unlock()
 
-	for _, fn := range listeners {
+	for _, listenerRec := range listeners {
+		fn := listenerRec.fn
+
 		// Recover from potential panics, supplying them to a
 		// RecoveryListener if one has been set, else allowing
 		// the panic to occur.
@@ -263,6 +246,10 @@ func (emitter *Emitter) EmitSync(event interface{}, arguments ...interface{}) *E
 			} else {
 				values = append(values, reflect.ValueOf(arguments[i]))
 			}
+		}
+
+		if listenerRec.isOnce {
+			emitter.RemoveListener(event,listenerRec.handle)
 		}
 
 		fn.Call(values)
@@ -307,8 +294,7 @@ func (emitter *Emitter) GetListenerCount(event interface{}) (count int) {
 func NewEmitter() (emitter *Emitter) {
 	emitter = new(Emitter)
 	emitter.Mutex = new(sync.Mutex)
-	emitter.events = make(map[interface{}][]reflect.Value)
+	emitter.events = make(map[interface{}][]listenerRecord)
 	emitter.maxListeners = DefaultMaxListeners
-	emitter.onces = make(map[reflect.Value]reflect.Value)
 	return
 }

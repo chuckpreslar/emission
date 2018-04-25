@@ -39,10 +39,10 @@ func main() {
     }
   }
   
-  emitter.On("hello", hello).
-    On("count", count).
-    Emit("hello", "world").
-    Emit("count", 5)
+  emitter.On("hello", hello)
+  emitter.On("count", count)
+  emitter.Emit("hello", "world")
+  emitter.Emit("count", 5)
 }
 
 ```
