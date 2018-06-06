@@ -105,7 +105,11 @@ func (emitter *Emitter) RemoveListener(event interface{}, listenerHandle Listene
 			}
 		}
 
-		emitter.events[event] = newEvents
+		if len(newEvents) > 0 {
+			emitter.events[event] = newEvents
+		} else {
+			delete(emitter.events,event)
+		}
 	}
 }
 
