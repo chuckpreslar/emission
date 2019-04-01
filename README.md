@@ -20,10 +20,8 @@ package main
 
 import (
   "fmt"
-)
 
-import (
-  "github.com/chuckpreslar/emission"
+  emission "github.com/chuckpreslar/emission"
 )
 
 func main() {
